@@ -1,0 +1,196 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  #app {
+    width: 100%; min-height: 100vh;
+    background: #0a0a0a;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: var(--font-sans, sans-serif);
+    gap: 3rem; padding: 1rem;
+  }
+  #setup {
+    display: flex; flex-direction: column; align-items: center; gap: 3rem; color: #fff;
+  }
+  #setup h1 { font-size: 40px; font-weight: 300; color: #666; letter-spacing: 10px; }
+  #time-inputs { display: flex; align-items: center; gap: 20px; }
+  .tig { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .tig label { font-size: 18px; color: #555; letter-spacing: 3px; }
+  .tig input {
+    width: 160px; height: 100px;
+    background: #161616; border: 0.5px solid #2a2a2a; border-radius: 12px;
+    color: #fff; font-size: 60px; font-weight: 300; text-align: center;
+    outline: none; transition: border-color 0.2s;
+  }
+  .tig input:focus { border-color: #cc2222; }
+  .sep { font-size: 60px; color: #333; padding-bottom: 30px; font-weight: 300; }
+  #start-btn {
+    background: #cc2222; border: none; border-radius: 12px;
+    color: #fff; font-size: 26px; font-weight: 400;
+    padding: 22px 96px; cursor: pointer; letter-spacing: 6px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #start-btn:hover { background: #ee3333; }
+  #start-btn:active { transform: scale(0.97); }
+
+  #timer-view { display: none; flex-direction: column; align-items: center; gap: 3rem; width: 100%; }
+  #clock-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+  #center-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    display: flex; flex-direction: column; align-items: center; white-space: nowrap;
+  }
+  #time-display {
+    font-size: 160px;
+    font-weight: 200; color: #fff; letter-spacing: 6px; line-height: 1;
+  }
+  #label { font-size: 24px; color: #444; letter-spacing: 6px; margin-top: 16px; }
+  #remaining { font-size: 54px; color: #666; letter-spacing: 4px; font-weight: 300; text-align: center; }
+  #controls { display: flex; gap: 24px; }
+  .ctrl-btn {
+    background: #161616; border: 0.5px solid #2a2a2a; border-radius: 12px;
+    color: #aaa; font-size: 22px; padding: 18px 56px; cursor: pointer;
+    transition: background 0.2s, border-color 0.2s; letter-spacing: 2px;
+  }
+  .ctrl-btn:hover { background: #222; border-color: #444; }
+  #reset-btn { color: #cc4444; border-color: #2a1111; }
+  #reset-btn:hover { background: #1a0808; border-color: #cc2222; }
+
+  #done-view { display: none; flex-direction: column; align-items: center; gap: 2.5rem; color: #fff; }
+  #done-text { font-size: 120px; font-weight: 200; color: #cc2222; letter-spacing: 10px; }
+  #done-sub { font-size: 28px; color: #555; letter-spacing: 4px; }
+</style>
+
+<div id="app">
+  <div id="setup">
+    <h1>T I M E R</h1>
+    <div id="time-inputs">
+      <div class="tig">
+        <input type="number" id="inp-h" min="0" max="23" value="0">
+        <label>시간</label>
+      </div>
+      <div class="sep">:</div>
+      <div class="tig">
+        <input type="number" id="inp-m" min="0" max="59" value="25">
+        <label>분</label>
+      </div>
+      <div class="sep">:</div>
+      <div class="tig">
+        <input type="number" id="inp-s" min="0" max="59" value="0">
+        <label>초</label>
+      </div>
+    </div>
+    <button id="start-btn">시 작</button>
+  </div>
+
+  <div id="timer-view">
+    <div id="clock-wrap">
+      <svg id="clock-svg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg" style="width:810px;height:810px;">
+        <circle cx="450" cy="450" r="440" fill="#111" stroke="#1a1a1a" stroke-width="1"/>
+        <circle cx="450" cy="450" r="408" fill="none" stroke="#171717" stroke-width="56"/>
+        <circle id="progress" cx="450" cy="450" r="408" fill="none"
+          stroke="#cc2222" stroke-width="56" stroke-linecap="round"
+          stroke-dasharray="2563" stroke-dashoffset="2563"
+          transform="rotate(-90 450 450)"/>
+      </svg>
+      <div id="center-text">
+        <div id="time-display">00:00</div>
+        <div id="label">남은 시간</div>
+      </div>
+    </div>
+    <div id="remaining">-</div>
+    <div id="controls">
+      <button class="ctrl-btn" id="pause-btn">일시정지</button>
+      <button class="ctrl-btn" id="reset-btn">리셋</button>
+    </div>
+  </div>
+
+  <div id="done-view">
+    <div id="done-text">완 료</div>
+    <div id="done-sub">타이머가 종료되었습니다</div>
+    <button class="ctrl-btn" id="again-btn" style="margin-top:12px;font-size:24px;padding:20px 72px;">다시 설정</button>
+  </div>
+</div>
+
+<script>
+const CIRC = 2 * Math.PI * 408;
+const prog = document.getElementById('progress');
+prog.style.strokeDasharray = CIRC;
+
+const setupEl = document.getElementById('setup');
+const timerEl = document.getElementById('timer-view');
+const doneEl  = document.getElementById('done-view');
+const timeDisp = document.getElementById('time-display');
+const remainEl = document.getElementById('remaining');
+const pauseBtn = document.getElementById('pause-btn');
+
+let totalSec=0, secLeft=0, paused=false, iv=null;
+
+function pad(n){ return String(Math.floor(n)).padStart(2,'0'); }
+function fmt(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  return h>0?`${pad(h)}:${pad(m)}:${pad(sec)}`:`${pad(m)}:${pad(sec)}`;
+}
+function fmtR(s){
+  if(s<=0) return '0초 남음';
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+  let p=[];
+  if(h) p.push(`${h}시간`);
+  if(m) p.push(`${m}분`);
+  if(sec||!p.length) p.push(`${sec}초`);
+  return p.join(' ')+' 남음';
+}
+function updateFill(left,total){
+  const ratio=total>0?1-(left/total):1;
+  prog.style.strokeDashoffset=CIRC*(1-ratio);
+  const r=Math.round(180+75*ratio),g=Math.round(34*(1-ratio));
+  prog.style.stroke=`rgb(${r},${g},34)`;
+}
+
+function tick(){
+  if(paused) return;
+  if(secLeft<=0){
+    clearInterval(iv);
+    updateFill(0,totalSec);
+    timeDisp.textContent='00:00';
+    remainEl.textContent='0초 남음';
+    setTimeout(()=>{ timerEl.style.display='none'; doneEl.style.display='flex'; },600);
+    return;
+  }
+  secLeft--;
+  timeDisp.textContent=fmt(secLeft);
+  remainEl.textContent=fmtR(secLeft);
+  updateFill(secLeft,totalSec);
+}
+
+document.getElementById('start-btn').addEventListener('click',()=>{
+  const h=parseInt(document.getElementById('inp-h').value)||0;
+  const m=parseInt(document.getElementById('inp-m').value)||0;
+  const s=parseInt(document.getElementById('inp-s').value)||0;
+  totalSec=h*3600+m*60+s;
+  if(!totalSec) return;
+  secLeft=totalSec; paused=false;
+  pauseBtn.textContent='일시정지';
+  setupEl.style.display='none'; doneEl.style.display='none';
+  timerEl.style.display='flex';
+  updateFill(totalSec,totalSec);
+  timeDisp.textContent=fmt(secLeft);
+  remainEl.textContent=fmtR(secLeft);
+  clearInterval(iv); iv=setInterval(tick,1000);
+});
+
+pauseBtn.addEventListener('click',()=>{
+  paused=!paused;
+  pauseBtn.textContent=paused?'계속하기':'일시정지';
+});
+
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  clearInterval(iv);
+  timerEl.style.display='none'; doneEl.style.display='none';
+  setupEl.style.display='flex';
+  prog.style.strokeDashoffset=CIRC;
+});
+
+document.getElementById('again-btn').addEventListener('click',()=>{
+  doneEl.style.display='none'; setupEl.style.display='flex';
+});
+</script>
